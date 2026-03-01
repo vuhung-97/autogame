@@ -120,7 +120,6 @@ class AuthGUI:
             pass
 
 def run_authentication():
-    return True
     app = AuthGUI()
     app.root.mainloop()
     # Sau khi mainloop kết thúc (do root.destroy() khi thành công 
