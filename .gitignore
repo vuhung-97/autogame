@@ -1,0 +1,47 @@
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ===== Virtual Environment =====
+venv/
+env/
+.venv/
+
+# ===== IDE =====
+.vscode/
+.idea/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Build / Dist =====
+build/
+dist/
+dist_auto_ai/
+dist_auto_ai_final/
+dist_farm_ruong/
+dist_farm_ruong_final/
+dist_old_full/
+samples/
+
+# ===== Spec files =====
+*.spec
+
+# ===== Env =====
+.env
+
+# ===== Logs =====
+*.log
+
+# ===== Model =====
+*.pt
+
+# ===== Cache =====
+.cache/
+
+# ==== Other files =====
+*.json
+test.py
