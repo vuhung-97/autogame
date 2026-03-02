@@ -73,6 +73,12 @@ class MainApp:
         self.log_area.pack(fill="x", pady=5)
         self.log_area.config(state="disabled", height=16)  # Đặt chiều cao cố định
 
+        # --- IMAGE VIEW AREA ---
+        self.img_frame = tk.Frame(main_container, bg="#222", height=200)
+        self.img_frame.pack(fill="both", expand=False, pady=(0, 5))
+        self.img_label = tk.Label(self.img_frame, bg="#222")
+        self.img_label.pack(fill="both", expand=True)
+
     def log_to_ui(self, msg, window_name="System"):
         timestamp = time.strftime('%H:%M:%S')
         full_msg = f"[{timestamp}] [{window_name}] ➜ {msg}\n"

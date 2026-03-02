@@ -138,16 +138,19 @@ class GameAutoBot:
         return cv2.minMaxLoc(res)[1] >= conf
 
     # --- LOGIC XỬ LÝ ---
-    def find_stars_and_pos(self, screen, side):
-        if self.model is None: return 0, None
-        
-        results = self.model.predict(
+    # Hàm gọi model
+    def predict(self, screen):
+        if self.model is None: return []
+        return self.model.predict(
             screen, 
             conf=0.5, 
             imgsz=1280, 
             verbose=False,
             stream=False
-            )
+        )
+
+    def find_stars_and_pos(self, screen, side):
+        results = self.predict(screen)  # Chạy dự đoán để cập nhật results
         mid_x = screen.shape[1] // 2
         best_star = 0
         # best_pos = None
@@ -161,8 +164,10 @@ class GameAutoBot:
 
                 # Lọc theo phía TRÁI hoặc PHẢI
                 if (side == "left" and center_x < mid_x) or (side == "right" and center_x >= mid_x):
+                    stars = 0
                     try:
-                        stars = int(label.split('-')[-1]) # Tách số từ 'd-5'
+                        if 'd' in label:
+                            stars = int(label.split('-')[-1]) # Tách số từ 'd-5'
                     except:
                         stars = 0
                     
@@ -188,46 +193,53 @@ class GameAutoBot:
         return False
 
     def find_ruong_nguyen(self, screen):
-        vung = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 3, 3)
-        # roi_img = screen[vung[1]:vung[3], vung[0]:vung[2]]
-        # self.callback_img(roi_img)  # Gửi đúng vùng cần tìm về giao diện
-        find = False
-        for img in IMG_TEMPLATES["RUONG_NGUYEN"]:
-            if self.safe_locate(img, screen, conf=0.6, area=vung):
-                find = True
-        return find
+        results = self.predict(screen)
+        if not results:
+            return False
+
+        for r in results:
+            if not hasattr(r, "boxes") or r.boxes is None:
+                continue
+
+            for box in r.boxes:
+                if box.cls is None or len(box.cls) == 0:
+                    continue
+
+                label = self.model.names[int(box.cls[0])]
+                if label == 'r':
+                    return True
+
+        return False
 
     # hàm tìm cửa
     def handle_selection_logic(self, device, screen, name, map_count, has_found_curse):
+        # trả ra map_count, có bấm thoát hay không, và có tìm thấy rương nguyền hay không
         s_l = self.find_stars_and_pos(screen, "left")
         s_r = self.find_stars_and_pos(screen, "right")
+         
+        if map_count >= MAX_MAP and not has_found_curse:
+            self.log(">> Không thấy rương nguyền <<", name)
+            self.adb_click(device, P_EXIT.x, P_EXIT.y)
+            time.sleep(1)
+            self.adb_click(device, P_ACCEPT.x, P_ACCEPT.y)
+            time.sleep(1.5)
+            return map_count, True, False #trả lại map_count chứ ko phải reset
+        
         if s_l > 0 or s_r > 0:
         #     self.log(f"Sao trái = {s_l}, Sao phải = {s_r}", name)
             map_count += 1
-
-            # if not self.mode_to_tien and (s_l == 4 or s_r == 4):
-            #     has_found_curse = True
-
-            # if self.mode_to_tien and (s_l == 5 or s_r == 5):
-            #     has_found_curse = True
                 
             if map_count == MAX_MAP:
                 # self.log("Chế độ Rương Nguyền: Đang ở map 2.", name)
-                time.sleep(1)
+                time.sleep(1.5) # tăng thời gian đợi từ 1.0 => 1.5
                 for i in range(5):
                     screen = self.adb_screenshot(device)
+                    #self.callback_img(screen)  # Gửi ảnh về giao diện mỗi lần chụp
                     if self.find_ruong_nguyen(screen):
                         self.log(">> PHÁT HIỆN RƯƠNG NGUYỀN <<", name)
                         return map_count, False, True
-                    time.sleep(0.3)
-                
-            if map_count >= MAX_MAP and not has_found_curse:
-                self.log(">> Không thấy rương nguyền <<", name)
-                time.sleep(1)
-                self.adb_click(device, P_EXIT.x, P_EXIT.y)
-                time.sleep(1)
-                self.adb_click(device, P_ACCEPT.x, P_ACCEPT.y)
-                return 0, True, False
+                    time.sleep(0.5) # tăng thời gian đợi từ 0.3=>0.5
+               
 
             time.sleep(1); 
             return map_count, False, has_found_curse
@@ -255,13 +267,13 @@ class GameAutoBot:
                 # 2. KIỂM TRA CHIẾN THẮNG/THẤT BẠI
                 if self.check_battle_status(device, screen, name):
                     idle_count = 0
-                    map_count, has_found_curse = 0, False
+                    map_count, has_found_curse = 1, False
                     continue
 
                 # 3. KIỂM TRA KHIÊU CHIẾN
                 v_atk = self.get_roi_by_frames(w_scr, h_scr, 9, 2)
-                if self.safe_locate('khieu_chien.png', screen, conf=0.7, area=v_atk):
-                    self.log(f"Đã gặp rương nguyền {self.count} lần")
+                if self.safe_locate('khieu_chien.png', screen, conf=0.6, area=v_atk):
+                    self.log(f"KHIÊU CHIẾN: Rương nguyền {self.count} lần")
                     idle_count = 0
                     self.adb_click(device, P_AUTO.x, P_AUTO.y)
                     time.sleep(1)
@@ -283,10 +295,8 @@ class GameAutoBot:
                 map_count, is_exited, has_found_curse = self.handle_selection_logic(device, screen, name, map_count, has_found_curse)
 
                 # Nếu map_count thay đổi hoặc bấm thoát, tức là bot đang hoạt động
-                if map_count != old_map_count or is_exited:
+                if map_count != old_map_count:
                     idle_count = 0
-                    if is_exited:
-                        map_count, has_found_curse = 0, False
                     # Gửi ảnh về giao diện khi phát hiện mục tiêu
                     # self.callback_img(screen)
                     continue

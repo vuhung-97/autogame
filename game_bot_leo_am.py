@@ -115,7 +115,7 @@ class GameAutoBot:
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
             adb_path = resource_path("adb.exe")
-            for port in range(5565, 5585, 2):
+            for port in range(5555, 5685, 2):
                 subprocess.run([adb_path, "connect", f"127.0.0.1:{port}"],
                    capture_output=True)
     

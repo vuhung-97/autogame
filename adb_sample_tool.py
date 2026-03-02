@@ -85,7 +85,14 @@ class ADBSampleTool:
                 self.canvas.delete("all")
                 self.canvas.create_image(270, 250, image=self.img_tk, anchor="center")
                 self.btn_save.config(state="normal")
-                self.status_var.set(f"✅ Đã chụp xong. Độ phân giải: {self.current_screen.shape[1]}x{self.current_screen.shape[0]}")
+                # Tự động lưu ảnh vào thư mục samples với tên mặc định
+                if not os.path.exists("samples"):
+                    os.makedirs("samples")
+                import datetime
+                now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                file_path = os.path.join("samples", f"screenshot_{now}.png")
+                cv2.imwrite(file_path, self.current_screen)
+                self.status_var.set(f"✅ Đã chụp và lưu: {file_path} ({self.current_screen.shape[1]}x{self.current_screen.shape[0]})")
         except Exception as e:
             messagebox.showerror("Lỗi", f"Lỗi chụp ảnh: {e}")
 
