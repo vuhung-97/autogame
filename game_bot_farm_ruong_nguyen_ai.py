@@ -222,7 +222,7 @@ class GameAutoBot:
             self.adb_click(device, P_EXIT.x, P_EXIT.y)
             time.sleep(1)
             self.adb_click(device, P_ACCEPT.x, P_ACCEPT.y)
-            time.sleep(1.5)
+            time.sleep(3)
             return map_count, True, False #trả lại map_count chứ ko phải reset
         
         if s_l > 0 or s_r > 0:
