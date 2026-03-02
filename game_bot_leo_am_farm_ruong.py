@@ -188,11 +188,22 @@ class GameAutoBot:
             return True
         return False
 
+    # hàm gọi AI
+    def predict(self, screen):
+        if self.model is None: return []
+        return self.model.predict(
+            screen, 
+            conf=0.5, 
+            imgsz=1280, 
+            verbose=False,
+            stream=False
+            )
+    
     # --- LOGIC XỬ LÝ ---
     def find_stars_and_pos(self, screen, side):
-        if self.model is None: return 0, None
+        results = self.predict(screen)
+        if not results: return 0, None
         
-        results = self.model.predict(screen, conf=0.5, imgsz=1280, verbose=False)
         mid_x = screen.shape[1] // 2
         best_star, best_pos = 0, None
 
@@ -205,8 +216,10 @@ class GameAutoBot:
 
                 # Lọc theo phía TRÁI hoặc PHẢI
                 if (side == "left" and center_x < mid_x) or (side == "right" and center_x >= mid_x):
+                    stars = 0
                     try:
-                        stars = int(label.split('-')[-1]) # Tách số từ 'd-5'
+                        if 'd' in label:
+                            stars = int(label.split('-')[-1]) # Tách số từ 'd-..'
                     except:
                         stars = 0
                     
@@ -238,67 +251,54 @@ class GameAutoBot:
 
     # hàm tìm rương
     def handle_find_ruong(self, screen):
-        vung = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 3, 3)
-        for img in IMG_TEMPLATES["RUONG_NGUYEN"]:
-            if self.safe_locate(img, screen, conf=0.5, area=vung):
-                self.log(f"Ảnh mẫu {img}", "Bot")
-                return True
+        results = self.predict(screen)
+        if not results:
+            return False
+
+        for r in results:
+            if not hasattr(r, "boxes") or r.boxes is None:
+                continue
+
+            for box in r.boxes:
+                if box.cls is None or len(box.cls) == 0:
+                    continue
+
+                label = self.model.names[int(box.cls[0])]
+                if label == 'r':
+                    return True
+
         return False
-    
-    def handle_find_cua_ruong(self, screen):
-        vung = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 3, 3)
-        for img in IMG_TEMPLATES["CUA_RUONG_NGUYEN"]:
-            pos = self.locate_center(img, screen, conf=0.8, area=vung)
-            if pos:
-                self.log(f"Ảnh mẫu {img}", "Bot")
-                return pos
-        return None
 
     # hàm chọn cửa cho ải thường
     def handle_selection_logic(self, device, screen, name, map_count, found_ruong = False):
+        # return về đã click và found_ruong
         s_l, pos_l = self.find_stars_and_pos(screen, "left")
         s_r, pos_r = self.find_stars_and_pos(screen, "right")
-        if map_count == 2 and self.mode_ruong_nguyen:
-            for i in range(8):
-                # self.callback_img(screen)
+        if map_count == MAX_MAP and self.mode_ruong_nguyen:
+            for i in range(5): # Tăng số lần kiểm tra để tìm rương nguyền
+                self.callback_img(screen)
+                screen = self.adb_screenshot(device)
                 if self.handle_find_ruong(screen):
-                    self.log(">> Đã  thấy Rương Nguyên!", name)
+                    self.log(">> Đã  thấy Rương Nguyền!", name)
                     found_ruong = True
                     break
-                time.sleep(0.1)
-                screen = self.adb_screenshot(device)
-            if not found_ruong:
-                self.log(">> Map 2 không thấy Rương nguyền! <<", name)
-                time.sleep(1)
-                self.adb_click(device, P_EXIT.x, P_EXIT.y)
-                time.sleep(1)
-                self.adb_click(device, P_ACCEPT.x, P_ACCEPT.y)
-                return True, found_ruong
+                time.sleep(0.5)
 
         if s_l > 0 or s_r > 0:
             if map_count >= 2 and self.mode_ruong_nguyen and not found_ruong:
-                time.sleep(1)
+                self.log(">> Map 2 không thấy Rương nguyền! <<", name)
+                time.sleep(TIME_SLEEP_SHORT)
                 self.adb_click(device, P_EXIT.x, P_EXIT.y)
-                time.sleep(1)
+                time.sleep(TIME_SLEEP_SHORT)
                 self.adb_click(device, P_ACCEPT.x, P_ACCEPT.y)
                 return True, found_ruong
 
-            if map_count == 1 and self.mode_ruong_nguyen:
-                if s_l == 3 or s_r == 3:
-                    pos = self.handle_find_cua_ruong(screen)
-                    if pos:
-                        self.adb_click(device, pos[0], pos[1])
-                        found_ruong = True
-                        self.log(">> Đã chọn cửa Rương Nguyên! <<", name)
-                        time.sleep(0.5)
-                        return True, found_ruong
-                    elif s_l == 0:
-                        self.adb_click(device, P_LEFT.x, P_LEFT.y)
-                        return True, found_ruong
-                    elif s_r == 0:
-                        self.adb_click(device, P_RIGHT.x, P_RIGHT.y)
-                        return True, found_ruong
-                    
+            if s_l == 4:
+                self.adb_click(device, P_LEFT.x, P_LEFT.y)
+                return True, found_ruong
+            if s_r == 4:
+                self.adb_click(device, P_RIGHT.x, P_RIGHT.y)
+                return True, found_ruong
             if s_l == 1:
                 self.adb_click(device, P_RIGHT.x, P_RIGHT.y)
                 return True, found_ruong
@@ -316,9 +316,9 @@ class GameAutoBot:
                 self.adb_click(device, pos_l[0], pos_l[1])
             elif pos_r is not None: 
                 self.adb_click(device, pos_r[0], pos_r[1])   
-            if map_count > 1:
-                time.sleep(self.time_sleep)
-            time.sleep(0.5)
+            # if map_count > 1:
+            #     time.sleep(self.time_sleep)
+            # time.sleep(1)
             return True, found_ruong
         return False, found_ruong
 
@@ -417,6 +417,7 @@ class GameAutoBot:
                 # 5. LOGIC CHỌN ĐƯỜNG ĐI
                 clicked, found_ruong = self.handle_selection_logic(device, screen, name, map_count, found_ruong)
                 if clicked:
+                    time.sleep(self.time_sleep-0.5)
                     idle_count = 0 # RESET TẠI ĐÂY
                     map_count += 1
                     continue
