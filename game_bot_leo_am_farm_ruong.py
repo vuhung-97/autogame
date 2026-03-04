@@ -64,6 +64,8 @@ P_LEFT = point(187, 522)
 P_RIGHT = point(518, 522)
 P_EXIT = point(60, 1240)
 P_ACCEPT = point(483, 777)
+P_RUONG_TO_TIEN = point(250, 830)
+P_RUONG_NGUYEN_SO = point(258, 872)
 TAP_POINT = point(100, 100)
 
 class GameAutoBot:
@@ -348,20 +350,24 @@ class GameAutoBot:
                 vung_giua = self.get_roi_by_frames(w_scr, h_scr, 4, 4)
 
                 # 1. KIỂM TRA ĐẦY TÚI
-                if self.adb_click_template(device, screen, IMG_TEMPLATES["MO_TUI"], "Mở túi", area=vung_giua, conf=0.7):
+                if self.adb_click_template(device, screen, IMG_TEMPLATES["MO_TUI"], "Mở túi", area=vung_giua, conf=0.8):
                     idle_count = 0 # RESET TẠI ĐÂY TRƯỚC KHI CONTINUE
                     self.log("PHÁT HIỆN: Túi đồ đã đầy!", name)
                     time.sleep(TIME_SLEEP)
                     
-                    screen = self.adb_screenshot(device)
-                    v_to_tien = self.get_roi_by_frames(w_scr, h_scr, 6, 3)
+                    # screen = self.adb_screenshot(device)
+                    # v_to_tien = self.get_roi_by_frames(w_scr, h_scr, 6, 3)
                     
-                    for tt_img in IMG_TEMPLATES["TO_TIEN"]:
-                        if self.adb_click_template(device, screen, tt_img, "Tổ tiên", area=v_to_tien, conf=0.6):
-                            time.sleep(TIME_SLEEP)
-                            screen = self.adb_screenshot(device)
-                            self.adb_click_template(device, screen, IMG_TEMPLATES["SET_NGUYEN_SO"], "Set nguyên sơ", area=v_to_tien, conf=0.6)
-                            break   
+                    # for tt_img in IMG_TEMPLATES["TO_TIEN"]:
+                    #     if self.adb_click_template(device, screen, tt_img, "Tổ tiên", area=v_to_tien, conf=0.6):
+                    #         time.sleep(TIME_SLEEP)
+                    #         screen = self.adb_screenshot(device)
+                    #         self.adb_click_template(device, screen, IMG_TEMPLATES["SET_NGUYEN_SO"], "Set nguyên sơ", area=v_to_tien, conf=0.6)
+                    #         break   
+
+                    self.adb_click(device, P_RUONG_TO_TIEN.x, P_RUONG_TO_TIEN.y);
+                    time.sleep(TIME_SLEEP/2)
+                    self.adb_click(device, P_RUONG_NGUYEN_SO.x, P_RUONG_NGUYEN_SO.y);
                     time.sleep(TIME_SLEEP)
                         
                     screen = self.adb_screenshot(device)

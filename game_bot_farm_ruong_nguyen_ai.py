@@ -231,10 +231,10 @@ class GameAutoBot:
                 
             if map_count == MAX_MAP:
                 # self.log("Chế độ Rương Nguyền: Đang ở map 2.", name)
-                time.sleep(1.5) # tăng thời gian đợi từ 1.0 => 1.5
-                for i in range(5):
+                time.sleep(1) # tăng thời gian đợi từ 1.0 => 1.5
+                for i in range(7):
                     screen = self.adb_screenshot(device)
-                    #self.callback_img(screen)  # Gửi ảnh về giao diện mỗi lần chụp
+                    # self.callback_img(screen)  # Gửi ảnh về giao diện mỗi lần chụp
                     if self.find_ruong_nguyen(screen):
                         self.log(">> PHÁT HIỆN RƯƠNG NGUYỀN <<", name)
                         return map_count, False, True
