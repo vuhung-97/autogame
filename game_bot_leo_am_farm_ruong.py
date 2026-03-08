@@ -41,6 +41,7 @@ IMG_TEMPLATES = {
     "THAT_BAI": "that_bai.png",
     "KHIEU_CHIEN": "khieu_chien.png",
     "HOI_SINH": "hoi_sinh.png",
+    "THAY_THE": "thay_the.png",
 }
 
 CHON_TRANGBI = [
@@ -66,6 +67,7 @@ P_EXIT = point(60, 1240)
 P_ACCEPT = point(483, 777)
 P_RUONG_TO_TIEN = point(250, 830)
 P_RUONG_NGUYEN_SO = point(258, 872)
+P_NHAN_QUA = point(160, 1120)
 TAP_POINT = point(100, 100)
 
 class GameAutoBot:
@@ -109,7 +111,13 @@ class GameAutoBot:
             active = []
             for device in all_devices:
                 serial = device.serial
-                state = device.get_state()
+                try:
+                    state = device.get_state()
+                except Exception:
+                    # thiết bị lỗi / zombie
+                    subprocess.run(f"adb disconnect {serial}", shell=True,
+                                capture_output=True, startupinfo=startupinfo)
+                    continue
                 
                 # 3. Lọc bỏ thiết bị lỗi/offline để danh sách UI luôn sạch sẽ
                 if state == "device":
@@ -126,8 +134,12 @@ class GameAutoBot:
 
     # --- CÁC HÀM THAO TÁC (CẬP NHẬT LOG) ---
     def adb_screenshot(self, device):
-        result = device.screencap()
-        return cv2.imdecode(np.frombuffer(result, np.uint8), cv2.IMREAD_COLOR)
+        try:
+            result = device.screencap()
+            return cv2.imdecode(np.frombuffer(result, np.uint8), cv2.IMREAD_COLOR)
+        except:
+            return None
+    
 
     def adb_click(self, device, x, y):
         # Tọa độ tap được hiển thị chi tiết để debug
@@ -440,6 +452,32 @@ class GameAutoBot:
             time.sleep(self.time_sleep)
         
         self.log(f"--- ĐÃ DỪNG THIẾT BỊ {name} ---", name)
+
+    def bot_nhan_qua_sanh(self, device, name):
+        self.log(f"LUỒNG MỚI: Bắt đầu nhận quà sảnh trên {name}", name)
+        while self.is_running:
+            try:
+                screen = self.adb_screenshot(device)
+                if screen is None:
+                    time.sleep(TIME_SLEEP)
+                    continue
+
+                v_sanh = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 5, 6)
+                if self.adb_click_template(device, screen, IMG_TEMPLATES["THAY_THE"], "Nhận quà sảnh", area=v_sanh, conf=0.7):
+                    self.log("Thay thế đồ!", name)
+            except Exception as e:
+                self.log(f"LỖI HỆ THỐNG: {e}", name)
+                break
+            self.adb_click(device, P_NHAN_QUA.x, P_NHAN_QUA.y)
+            time.sleep(1)
+            self.adb_click(device, P_NHAN_QUA.x, P_NHAN_QUA.y)
+            time.sleep(TIME_SLEEP)
+
+    def start_auto_sanh(self, devices_to_run):
+        self.is_running = True
+        self.time_sleep = TIME_SLEEP
+        for serial, device in devices_to_run.items():
+            threading.Thread(target=self.bot_nhan_qua_sanh, args=(device, serial), daemon=True).start()
 
     def start(self, devices_to_run, is_ruong_nguyen=False):
         self.is_running = True
