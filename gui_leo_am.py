@@ -4,7 +4,7 @@ from PIL import Image, ImageTk
 import cv2
 import threading
 import time
-from game_bot_leo_am import GameAutoBot, CHON_TRANGBI, LEVEL_NAMES
+from game_bot_leo_am_farm_ruong import GameAutoBot, CHON_TRANGBI, LEVEL_NAMES
 
 MAX_LOG = 200
 
@@ -12,7 +12,7 @@ class MainApp:
     def __init__(self, root):
         self.root = root
         # Truyền thêm callback ảnh cho bot
-        self.bot = GameAutoBot(self.log_to_ui)
+        self.bot = GameAutoBot(self.log_to_ui, self.show_screen_image)
         self.selected_device_vars = {}
         self.setup_styles()
         self.setup_ui()
@@ -69,6 +69,12 @@ class MainApp:
 
         self.start_btn = tk.Button(auto_btns_frame, text="▶ AUTO", command=lambda: self.on_start(False), bg="#44bd32", fg="white", font=("Segoe UI", 10, "bold"), bd=0, height=2)
         self.start_btn.pack(side="left", fill="x", expand=True, padx=(0, 2))
+
+        self.nguyen_btn = tk.Button(auto_btns_frame, text="💀 FARM RƯƠNG", command=lambda: self.on_start(True), bg="#8e44ad", fg="white", font=("Segoe UI", 10, "bold"), bd=0, height=2)
+        self.nguyen_btn.pack(side="right", fill="x", expand=True, padx=(2, 0))
+
+        self.auto_sanh_btn = tk.Button(btn_container, text="NHẬN QUÀ SẢNH", command=self.start_auto_sanh, bg="#e1b12c", fg="white", font=("Segoe UI", 10, "bold"), bd=0, height=2)
+        self.auto_sanh_btn.pack(fill="x", pady=(0, 5))
 
         self.stop_btn = tk.Button(btn_container, text="⏹ DỪNG TẤT CẢ", command=self.on_stop, bg="#c23616", fg="white", font=("Segoe UI", 10, "bold"), bd=0, height=2)
         self.stop_btn.pack(fill="x")
@@ -144,17 +150,37 @@ class MainApp:
         self.list_canvas.config(scrollregion=self.list_canvas.bbox("all"))
         self.log_to_ui(f"Tìm thấy {len(devices)} thiết bị.")
 
-    def on_start(self, is_to_tien):
+    def start_auto_sanh(self):
+        active_run = {s: d for s, (v, d) in self.selected_device_vars.items() if v.get()}
+
+        if not active_run:
+            self.log_to_ui("LỖI: Bạn chưa chọn thiết bị nào!")
+            return
+        self.start_btn.config(state="disabled")
+        self.nguyen_btn.config(state="disabled")
+        self.auto_sanh_btn.config(state="disabled")
+        self.bot.start_auto_sanh(active_run)
+        return
+    
+    def on_start(self, is_ruong_nguyen):
         active_run = {s: d for s, (v, d) in self.selected_device_vars.items() if v.get()}
 
         if not active_run:
             self.log_to_ui("LỖI: Bạn chưa chọn thiết bị nào!")
             return
 
+        # if is_ruong_nguyen and active_run.__len__() > 1:
+        #     self.log_to_ui("LỖI: Chỉ được chọn tối đa 1 thiết bị!")
+        #     return
+
         self.start_btn.config(state="disabled")
-        self.bot.start(active_run, is_to_tien)
+        self.nguyen_btn.config(state="disabled")
+        self.auto_sanh_btn.config(state="disabled")
+        self.bot.start(active_run, is_ruong_nguyen)
 
     def on_stop(self):
         self.bot.stop()
         self.start_btn.config(state="normal")
+        self.nguyen_btn.config(state="normal")
+        self.auto_sanh_btn.config(state="normal")
         self.log_to_ui("--- ĐÃ DỪNG TẤT CẢ ---")

@@ -87,7 +87,13 @@ class GameAutoBot:
             active = []
             for device in all_devices:
                 serial = device.serial
-                state = device.get_state()
+                try:
+                    state = device.get_state()
+                except Exception:
+                    # thiết bị lỗi / zombie
+                    subprocess.run(f"adb disconnect {serial}", shell=True,
+                                capture_output=True, startupinfo=startupinfo)
+                    continue
                 
                 # 3. Lọc bỏ thiết bị lỗi/offline để danh sách UI luôn sạch sẽ
                 if state == "device":

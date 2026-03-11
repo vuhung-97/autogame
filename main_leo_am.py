@@ -1,6 +1,6 @@
 import sys
 from auth import run_authentication
-from gui_leo_am_farm_ruong import MainApp
+from gui_leo_am import MainApp
 import tkinter as tk
 
 if __name__ == "__main__":

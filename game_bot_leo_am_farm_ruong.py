@@ -288,7 +288,7 @@ class GameAutoBot:
         # return về đã click và found_ruong
         s_l, pos_l = self.find_stars_and_pos(screen, "left")
         s_r, pos_r = self.find_stars_and_pos(screen, "right")
-        if map_count == MAX_MAP and self.mode_ruong_nguyen:
+        if map_count == MAX_MAP and self.mode_ruong_nguyen and not found_ruong:
             for i in range(5): # Tăng số lần kiểm tra để tìm rương nguyền
                 self.callback_img(screen)
                 screen = self.adb_screenshot(device)
@@ -297,6 +297,13 @@ class GameAutoBot:
                     found_ruong = True
                     break
                 time.sleep(0.5)
+
+            # Nếu không thấy rương thì thoát
+            if not found_ruong:
+                self.adb_click(device, P_EXIT.x, P_EXIT.y)
+                time.sleep(TIME_SLEEP_SHORT)
+                self.adb_click(device, P_ACCEPT.x, P_ACCEPT.y)
+                return True, found_ruong
 
         if s_l > 0 or s_r > 0:
             if map_count >= 2 and self.mode_ruong_nguyen and not found_ruong:
@@ -329,10 +336,7 @@ class GameAutoBot:
             if s_l >= s_r and pos_l is not None: 
                 self.adb_click(device, pos_l[0], pos_l[1])
             elif pos_r is not None: 
-                self.adb_click(device, pos_r[0], pos_r[1])   
-            # if map_count > 1:
-            #     time.sleep(self.time_sleep)
-            # time.sleep(1)
+                self.adb_click(device, pos_r[0], pos_r[1]) 
             return True, found_ruong
         return False, found_ruong
 
@@ -366,16 +370,6 @@ class GameAutoBot:
                     idle_count = 0 # RESET TẠI ĐÂY TRƯỚC KHI CONTINUE
                     self.log("PHÁT HIỆN: Túi đồ đã đầy!", name)
                     time.sleep(TIME_SLEEP)
-                    
-                    # screen = self.adb_screenshot(device)
-                    # v_to_tien = self.get_roi_by_frames(w_scr, h_scr, 6, 3)
-                    
-                    # for tt_img in IMG_TEMPLATES["TO_TIEN"]:
-                    #     if self.adb_click_template(device, screen, tt_img, "Tổ tiên", area=v_to_tien, conf=0.6):
-                    #         time.sleep(TIME_SLEEP)
-                    #         screen = self.adb_screenshot(device)
-                    #         self.adb_click_template(device, screen, IMG_TEMPLATES["SET_NGUYEN_SO"], "Set nguyên sơ", area=v_to_tien, conf=0.6)
-                    #         break   
 
                     self.adb_click(device, P_RUONG_TO_TIEN.x, P_RUONG_TO_TIEN.y);
                     time.sleep(TIME_SLEEP/2)
