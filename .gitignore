@@ -46,3 +46,5 @@ scrcpy-win64-v3.3.4/
 # ==== Other files =====
 *.json
 test.py
+*.docx
+*.pdf

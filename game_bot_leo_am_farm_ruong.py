@@ -42,6 +42,17 @@ IMG_TEMPLATES = {
     "KHIEU_CHIEN": "khieu_chien.png",
     "HOI_SINH": "hoi_sinh.png",
     "THAY_THE": "thay_the.png",
+    "NUT_NHIEM_VU": "nv_hang_ngay/nut_nhiem_vu.png",
+    "NHIEM_VU": "nv_hang_ngay/nhiem_vu.png",
+    "CHIEU_MO_BUA": "nv_hang_ngay/chieu_mo_bua.png",
+    "CONG_SU": "nv_hang_ngay/cong_su.png",
+    "CHINH_PHAT_THU_LINH": "nv_hang_ngay/chinh_phat_thu_linh.png",
+    "NONG_TRAI_HON_DON": "nv_hang_ngay/nong_trai_hon_don.png",
+    "THU_VIEN": "nv_hang_ngay/thu_vien.png",
+    "CHUC_MUNG_NHAN": "nv_hang_ngay/chuc_mung_nhan.png",
+    "THE_BI_AN": "nv_hang_ngay/the_bi_an.png",
+    "TUONG": ["nv_hang_ngay/tuong_be.png", "nv_hang_ngay/tuong_vua.png", "nv_hang_ngay/tuong_lon.png"],
+    "CUA_QUA_MAN_MO_THE": "nv_hang_ngay/cua_qua_man_mo_the.png",
 }
 
 CHON_TRANGBI = [
@@ -67,8 +78,54 @@ P_EXIT = point(60, 1240)
 P_ACCEPT = point(483, 777)
 P_RUONG_TO_TIEN = point(250, 830)
 P_RUONG_NGUYEN_SO = point(258, 872)
-P_NHAN_QUA = point(160, 1120)
-TAP_POINT = point(100, 100)
+
+P_NHAN_QUA = point(272, 1130)
+
+TAP_POINT = point(350, 10)
+
+# nhiệm vụ hàng ngày
+P_DOANH_TRAI = point(80, 1230)
+P_KY_NANG = point(210, 1230)
+P_SANH = point(360, 1230)
+P_MAO_HIEM = point(500, 1230)
+P_TRAN = point(650, 1230)
+# nhiệm vụ chiêu mộ cộng sự
+P_CONG_SU = point(350, 170)
+P_CHIEU_MO = point(410, 1230)
+P_CHIEU_MO_LAM_MOI = point(510, 1000)
+P_CHIEU_MO_1 = point(130, 910)
+P_CHIEU_MO_2 = point(360, 910)
+P_CHIEU_MO_3 = point(590, 910)
+# nhiệm vụ chiêu mộ bùa
+P_CHIEU_MO_BUA = point(630, 990)
+P_CHIEU_MO_BUA_3_LAN = point(360, 1020)
+# nhiệm vụ chinh phạt thủ lĩnh
+P_CHINH_PHAT_THU_LINH = point(200, 600)
+P_VAO_CHINH_PHAT = point(310, 1040)
+P_XAC_NHAN_CHINH_PHAT_NHANH = point(480, 777)
+P_CHINH_PHAT_NHANH = point(460, 1040)
+#TAP POINT 2 LẦN
+# nhiệm vụ nông trại hỗn độn
+P_NONG_TRAI_HON_DON = point(220, 250)
+P_QUET = point(490, 1040)
+P_XAC_NHAN = point(480, 770)
+# TAP POINT 2 LẦN
+# nhiệm vụ thư viện
+P_THU_VIEN = point(110, 800)
+P_HIEN_GIA = point(650, 1230)
+P_CHON_HIEN_GIA = point(200, 330)
+P_QUA = point(560, 960) #tặng 3 lần
+P_THE = point(134, 364)
+X_TANG = 114
+Y_TANG = 114
+# về sảnh chính nhận quà
+# bấm nút sảnh 30s, sau đó tìm nút nv
+P_DUNG_DANH_QUAI = point(210, 177)
+P_NV = point(645, 170)
+P_NV_HANG_NGAY = point(640, 390)
+P_HOAN_THANH_NV = point(550, 470) # 10 lần
+P_NHAN_VANG = point(420, 300)
+# TAP POINT 2 LẦN
 
 class GameAutoBot:
     def __init__(self, log_callback, img_callback=None):
@@ -340,6 +397,13 @@ class GameAutoBot:
             return True, found_ruong
         return False, found_ruong
 
+    def start(self, devices_to_run, is_ruong_nguyen=False):
+        self.is_running = True
+        self.mode_ruong_nguyen = is_ruong_nguyen
+        self.time_sleep = TIME_SLEEP if not is_ruong_nguyen else TIME_SLEEP_SHORT
+        for serial, device in devices_to_run.items():
+            threading.Thread(target=self.bot_worker, args=(device, serial), daemon=True).start()
+
     def bot_worker(self, device, name):
         self.log(f"LUỒNG MỚI: Bắt đầu hoạt động trên {name}", name)
         
@@ -382,7 +446,6 @@ class GameAutoBot:
                     
                     s_tui = self.adb_screenshot(device)
                     v_chon = self.get_roi_by_frames(w_scr, h_scr, 4, 3)
-                    # self.log(f"Đang tìm trang bị: {self.current_target_img}")
                     t_pos = self.locate_center(self.current_target_img, s_tui, conf=0.9, area=v_chon)
                     if t_pos:
                         self.adb_click(device, t_pos[0], t_pos[1]); time.sleep(TIME_SLEEP)
@@ -447,6 +510,12 @@ class GameAutoBot:
         
         self.log(f"--- ĐÃ DỪNG THIẾT BỊ {name} ---", name)
 
+    def start_auto_sanh(self, devices_to_run):
+        self.is_running = True
+        self.time_sleep = TIME_SLEEP
+        for serial, device in devices_to_run.items():
+            threading.Thread(target=self.bot_nhan_qua_sanh, args=(device, serial), daemon=True).start()
+
     def bot_nhan_qua_sanh(self, device, name):
         self.log(f"LUỒNG MỚI: Bắt đầu nhận quà sảnh trên {name}", name)
         while self.is_running:
@@ -467,18 +536,287 @@ class GameAutoBot:
             self.adb_click(device, P_NHAN_QUA.x, P_NHAN_QUA.y)
             time.sleep(TIME_SLEEP)
 
-    def start_auto_sanh(self, devices_to_run):
+    def start_auto_nv(self, devices_to_run):
         self.is_running = True
-        self.time_sleep = TIME_SLEEP
+        self.time_sleep = 2
         for serial, device in devices_to_run.items():
-            threading.Thread(target=self.bot_nhan_qua_sanh, args=(device, serial), daemon=True).start()
+            threading.Thread(target=self.bot_auto_nv, args=(device, serial), daemon=True).start()
 
-    def start(self, devices_to_run, is_ruong_nguyen=False):
-        self.is_running = True
-        self.mode_ruong_nguyen = is_ruong_nguyen
-        self.time_sleep = TIME_SLEEP if not is_ruong_nguyen else TIME_SLEEP_SHORT
-        for serial, device in devices_to_run.items():
-            threading.Thread(target=self.bot_worker, args=(device, serial), daemon=True).start()
+    def bot_auto_nv(self, device, name):
+        self.log(f"LUỒNG MỚI: Bắt đầu làm nhiệm vụ hàng ngày trên {name}", name)
+        try:
+            self.chieu_mo_cong_su(device, name, self.is_running)
+
+            self.chieu_mo_bua(device, name, self.is_running)
+
+            self.nong_trai_hon_don(device, name, self.is_running)
+
+            self.chinh_phat_thu_linh(device, name, self.is_running)
+
+            self.thu_vien(device, name, self.is_running)
+
+            self.auto_sanh_chinh(device, name, self.is_running)
+
+            if not self.is_running:
+                return
+            
+        except Exception as e:
+            self.log(f"LỖI HỆ THỐNG: {e}", name)
+        
+        # Dừng luồng của device này sau khi hoàn thành nhiệm vụ
+        self.log(f"--- ĐÃ HOÀN THÀNH NHIỆM VỤ HÀNG NGÀY TRÊN {name} ---", name)
+
+    def chieu_mo_bua(self, device, name, isrunning=False):
+        # Chiêu mộ bùa
+        find_chieu_mo_bua = False
+        if isrunning:
+            for _ in range(3):
+                self.adb_click(device, P_KY_NANG.x, P_KY_NANG.y)
+                time.sleep(self.time_sleep*2)
+                
+                screen = self.adb_screenshot(device)
+                if screen is None:
+                    time.sleep(self.time_sleep)
+                    continue
+                
+                v_chieu_mo_bua = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 7, 3)
+
+                if self.safe_locate(IMG_TEMPLATES["CHIEU_MO_BUA"], screen, area=v_chieu_mo_bua, conf=0.85):
+                    find_chieu_mo_bua = True
+                    break
+            
+            if not find_chieu_mo_bua:
+                return
+            
+            self.adb_click(device, P_CHIEU_MO_BUA.x, P_CHIEU_MO_BUA.y)
+            time.sleep(self.time_sleep)
+
+            for _ in range(3):
+                time.sleep(self.time_sleep)
+                self.adb_click(device, P_CHIEU_MO_BUA_3_LAN.x, P_CHIEU_MO_BUA_3_LAN.y)
+                time.sleep(self.time_sleep)
+                self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+            time.sleep(self.time_sleep)
+            for _ in range(2):
+                self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+                time.sleep(self.time_sleep)
+
+    def chieu_mo_cong_su(self, device, name, isrunning=False):
+        # Chiêu mộ cộng sự
+        if isrunning:
+            find_cong_su = False
+            for _ in range(3):
+                time.sleep(self.time_sleep)
+                self.adb_click(device, P_DOANH_TRAI.x, P_DOANH_TRAI.y); 
+                time.sleep(self.time_sleep)
+
+                screen = self.adb_screenshot(device)
+                if screen is None:
+                    time.sleep(self.time_sleep)
+                    continue
+
+                v_cong_su = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 1, 3)
+                if self.safe_locate(IMG_TEMPLATES["CONG_SU"], screen, area=v_cong_su, conf=0.85):
+                    find_cong_su = True
+                    break
+
+            if not find_cong_su:
+                return
+                
+            self.adb_click(device, P_CONG_SU.x, P_CONG_SU.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_CHIEU_MO.x, P_CHIEU_MO.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_CHIEU_MO_LAM_MOI.x, P_CHIEU_MO_LAM_MOI.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_CHIEU_MO_1.x, P_CHIEU_MO_1.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_CHIEU_MO_2.x, P_CHIEU_MO_2.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_CHIEU_MO_3.x, P_CHIEU_MO_3.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+            time.sleep(self.time_sleep)
+            for _ in range(2):
+                self.adb_click(device, P_EXIT.x, P_EXIT.y)
+                time.sleep(self.time_sleep)
+
+    def chinh_phat_thu_linh(self, device, name, isrunning=False):
+        # Chinh phạt thủ lĩnh
+        if isrunning:
+            find_chinh_phat = False
+            for _ in range(3):
+                time.sleep(self.time_sleep)
+                self.adb_click(device, P_MAO_HIEM.x, P_MAO_HIEM.y)
+                time.sleep(self.time_sleep)
+                
+                screen = self.adb_screenshot(device)
+                if screen is None:
+                    time.sleep(self.time_sleep)
+                    continue
+
+                v_chinh_phat = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 3, 4)
+                if self.safe_locate(IMG_TEMPLATES["CHINH_PHAT_THU_LINH"], screen, area=v_chinh_phat, conf=0.75):
+                    find_chinh_phat = True
+                    break
+            if not find_chinh_phat:
+                return
+
+            self.adb_click(device, P_CHINH_PHAT_THU_LINH.x, P_CHINH_PHAT_THU_LINH.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_VAO_CHINH_PHAT.x, P_VAO_CHINH_PHAT.y)
+
+            time_errors = 0
+            while (time_errors < 25):
+                time.sleep(self.time_sleep)
+                screen = self.adb_screenshot(device)
+                v_thong_bao = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 3, 3)
+                if self.safe_locate(IMG_TEMPLATES["CHUC_MUNG_NHAN"], screen, area=v_thong_bao, conf=0.7):
+                    self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+                    time.sleep(self.time_sleep)
+                    break
+                time_errors += 1
+            
+            for _ in range(4):
+                self.adb_click(device, P_CHINH_PHAT_NHANH.x, P_CHINH_PHAT_NHANH.y)
+                time.sleep(self.time_sleep)
+                self.adb_click(device, P_XAC_NHAN_CHINH_PHAT_NHANH.x, P_XAC_NHAN_CHINH_PHAT_NHANH.y)
+                time.sleep(self.time_sleep)
+                self.adb_click(device, P_CHINH_PHAT_NHANH.x, P_CHINH_PHAT_NHANH.y)
+                time.sleep(self.time_sleep)
+
+            self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+            time.sleep(self.time_sleep)       
+
+    def nong_trai_hon_don(self, device, name, isrunning=False):
+        # Nông trại hỗn độn
+        if isrunning:
+            find_nong_trai = False
+            for _ in range(3):
+                time.sleep(self.time_sleep)
+                self.adb_click(device, P_MAO_HIEM.x, P_MAO_HIEM.y)
+                time.sleep(self.time_sleep)
+
+                screen = self.adb_screenshot(device)
+                v_nong_trai = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 1, 4)
+                if self.safe_locate(IMG_TEMPLATES["NONG_TRAI_HON_DON"], screen, area=v_nong_trai, conf=0.75):
+                    find_nong_trai = True
+                    break
+            if not find_nong_trai:
+                return
+
+            self.adb_click(device, P_NONG_TRAI_HON_DON.x, P_NONG_TRAI_HON_DON.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_QUET.x, P_QUET.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_XAC_NHAN.x, P_XAC_NHAN.y)
+            time.sleep(self.time_sleep)
+            for _ in range(2):
+                self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+                time.sleep(self.time_sleep)
+
+    def thu_vien(self, device, name, isrunning=False):
+        # Thư viện
+        if isrunning:
+            find_thu_vien = False
+            for _ in range(3):
+                time.sleep(self.time_sleep)
+                self.adb_click(device, P_TRAN.x, P_TRAN.y)
+                time.sleep(self.time_sleep)
+
+                screen = self.adb_screenshot(device)
+                v_thu_vien = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 5, 4)
+                if self.safe_locate(IMG_TEMPLATES["THU_VIEN"], screen, area=v_thu_vien, conf=0.85):
+                    find_thu_vien = True
+                    break
+            if not find_thu_vien:
+                return
+
+            self.adb_click(device, P_THU_VIEN.x, P_THU_VIEN.y)
+            time.sleep(self.time_sleep)
+
+            for _ in range(3):
+                screen = self.adb_screenshot(device)
+                if screen is None:
+                    time.sleep(self.time_sleep)
+                    continue
+                else:
+                    break
+
+            # mở tượng
+            for img in IMG_TEMPLATES["TUONG"]:
+                pos = self.locate_center(img, screen, conf=0.85)
+                if pos:
+                    for _ in range(6):
+                        self.adb_click(device, pos[0], pos[1])
+                        time.sleep(self.time_sleep)
+
+            # qua cửa
+            screen = self.adb_screenshot(device)
+            pos =  self.locate_center(IMG_TEMPLATES["CUA_QUA_MAN_MO_THE"], screen, conf=0.7)
+            if pos: 
+                for _ in range(2):
+                    self.adb_click(device, pos[0], pos[1])
+                    time.sleep(self.time_sleep)
+                    
+            # mở thẻ
+            if self.safe_locate(IMG_TEMPLATES["THE_BI_AN"], screen, conf=0.7, area=v_thu_vien):
+                for x in range(5):
+                    for y in range(6):
+                        self.adb_click(device, P_THE.x + x*X_TANG, P_THE.y + y*Y_TANG)
+                        time.sleep(0.7)
+
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_HIEN_GIA.x, P_HIEN_GIA.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_CHON_HIEN_GIA.x, P_CHON_HIEN_GIA.y)
+            time.sleep(self.time_sleep*3)
+            for _ in range(3):
+                self.adb_click(device, P_QUA.x, P_QUA.y)
+                time.sleep(self.time_sleep)
+            for _ in range(2):
+                self.adb_click(device, P_EXIT.x, P_EXIT.y)
+                time.sleep(self.time_sleep)
+
+    def auto_sanh_chinh(self, device, name, isrunning=False):
+        # Auto ở sảnh chính
+        if isrunning:
+            self.adb_click(device, P_SANH.x, P_SANH.y)
+            time.sleep(self.time_sleep)
+            self.adb_click(device, P_SANH.x, P_SANH.y)
+            time.sleep(45) # nghỉ 45s để hoàn thành các nhiệm vụ
+            while(self.is_running):
+                time.sleep(5)
+                screen = self.adb_screenshot(device)
+                if screen is None:
+                    continue
+
+                v_sanh = self.get_roi_by_frames(screen.shape[1], screen.shape[0], 2, 4)
+                if self.safe_locate(IMG_TEMPLATES["NUT_NHIEM_VU"], screen, area=v_sanh, conf=0.85):
+                    self.adb_click(device, P_DUNG_DANH_QUAI.x, P_DUNG_DANH_QUAI.y)
+                    time.sleep(self.time_sleep*3)
+                    self.adb_click(device, P_NV.x, P_NV.y)
+                    time.sleep(self.time_sleep)
+                    screen = self.adb_screenshot(device)
+                    if self.adb_click_template(device, screen, IMG_TEMPLATES["NHIEM_VU"], "Nhiệm vụ", area=v_sanh, conf=0.85):
+                        time.sleep(self.time_sleep)
+                        for i in range(10):
+                            self.adb_click(device, P_HOAN_THANH_NV.x, P_HOAN_THANH_NV.y)
+                            time.sleep(self.time_sleep)
+                            self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+                            time.sleep(self.time_sleep)
+
+                        self.adb_click(device, P_NHAN_VANG.x, P_NHAN_VANG.y)
+                        time.sleep(self.time_sleep)
+                    self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+                    time.sleep(self.time_sleep)
+                    self.adb_click(device, TAP_POINT.x, TAP_POINT.y)
+                    time.sleep(self.time_sleep)
+                    break
 
     def stop(self):
         self.is_running = False

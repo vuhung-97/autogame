@@ -11,7 +11,7 @@ class ADBSampleTool:
     def __init__(self, root):
         self.root = root
         self.root.title("ADB Screenshot Tool")
-        self.root.geometry("600x700")
+        self.root.geometry("600x900")
         self.root.configure(bg="#2f3640")
 
         self.device = None
@@ -27,9 +27,19 @@ class ADBSampleTool:
         header.pack(fill="x")
 
         # Khung hiển thị ảnh xem trước
-        self.canvas = tk.Canvas(self.root, width=540, height=500, bg="#1e272e", highlightthickness=0)
+        # Canvas nhỏ hơn, giữ tỷ lệ 9:16
+        self.canvas_w = 360
+        self.canvas_h = 640
+        self.canvas = tk.Canvas(self.root, width=self.canvas_w, height=self.canvas_h, bg="#1e272e", highlightthickness=0)
         self.canvas.pack(pady=10)
-        self.canvas_text = self.canvas.create_text(270, 250, text="Chưa có dữ liệu", fill="white")
+        self.canvas_text = self.canvas.create_text(self.canvas_w//2, self.canvas_h//2, text="Chưa có dữ liệu", fill="white")
+
+        # Label hiển thị vị trí click
+        self.click_label = tk.Label(self.root, text="Vị trí click: (x, y)", fg="white", bg="#2f3640", font=("Segoe UI", 10))
+        self.click_label.pack(pady=5)
+
+        # Gắn sự kiện click cho canvas
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
 
         # Khung điều khiển nút bấm
         control_frame = tk.Frame(self.root, bg="#2f3640")
@@ -53,6 +63,16 @@ class ADBSampleTool:
         status_bar = tk.Label(self.root, textvariable=self.status_var, bd=1, relief="sunken", anchor="w", 
                               bg="#353b48", fg="white", font=("Segoe UI", 9))
         status_bar.pack(side="bottom", fill="x")
+
+    def on_canvas_click(self, event):
+        if self.current_screen is None:
+            return
+        # Canvas nhỏ, ảnh gốc 720x1280
+        x_img = round(event.x * 720 / self.canvas_w)
+        y_img = round(event.y * 1280 / self.canvas_h)
+        x_img = min(max(x_img, 0), 719)
+        y_img = min(max(y_img, 0), 1279)
+        self.click_label.config(text=f"Vị trí click: ({x_img}, {y_img})")
 
     def connect_adb(self):
         try:
@@ -118,10 +138,11 @@ class ADBSampleTool:
                 # Hiển thị lên Canvas
                 preview_img = cv2.cvtColor(self.current_screen, cv2.COLOR_BGR2RGB)
                 preview_img = Image.fromarray(preview_img)
-                preview_img.thumbnail((540, 500))
+                # Resize ảnh về đúng kích thước canvas
+                preview_img = preview_img.resize((self.canvas_w, self.canvas_h), Image.LANCZOS)
                 self.img_tk = ImageTk.PhotoImage(preview_img)
                 self.canvas.delete("all")
-                self.canvas.create_image(270, 250, image=self.img_tk, anchor="center")
+                self.canvas.create_image(0, 0, image=self.img_tk, anchor="nw")
                 self.btn_save.config(state="normal")
         except Exception as e:
             self.status_var.set(f"❌ Lỗi hệ thống: {str(e)}")
